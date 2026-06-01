@@ -98,7 +98,7 @@ def extract_year(text):
 
 
 def pdf_page_to_image(page):
-    pix = page.get_pixmap(dpi=150)
+    pix = page.get_pixmap(dpi=200)
     img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
     if pix.n == 4:
         img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)

@@ -93,7 +93,16 @@ async def security_headers(request: Request, call_next):
 @app.get("/api/health")
 @limiter.limit("30/minute")
 async def health(request: Request):
-    return {"status": "ok"}
+    ocr_ok = False
+    try:
+        import pytesseract
+        v = pytesseract.get_tesseract_version()
+        langs = pytesseract.get_languages()
+        ocr_ok = 'spa' in langs
+        ocr_info = {"version": str(v), "langs": langs, "spa_ok": ocr_ok}
+    except Exception as e:
+        ocr_info = {"error": str(e)}
+    return {"status": "ok", "tesseract": ocr_info}
 
 
 # ─── Upload ───────────────────────────────────────────────
