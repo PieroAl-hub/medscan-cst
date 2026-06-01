@@ -98,7 +98,7 @@ def extract_year(text):
 
 
 def pdf_page_to_image(page):
-    pix = page.get_pixmap(dpi=200)
+    pix = page.get_pixmap(dpi=150)
     img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
     if pix.n == 4:
         img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
@@ -110,9 +110,7 @@ def pdf_page_to_image(page):
 
 
 def preprocess_image(img):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return thresh
+    return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 
 def extract_from_pdf(pdf_path):
@@ -147,7 +145,7 @@ def extract_from_pdf(pdf_path):
         return result
 
     try:
-        ocr_text = pytesseract.image_to_string(processed, lang='spa', config='--psm 6')
+        ocr_text = pytesseract.image_to_string(processed, lang='spa', config='--psm 3 --oem 1')
     except Exception as e:
         result['error'] = f'Error en OCR: {e}'
         return result
