@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedScan Pro - Análisis de Seguridad</title>
+<style>
+  :root { --primary: #0891B2; --bg: #F0FDFA; --text: #134E4A; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); max-width: 960px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+  h1 { color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: .5rem; }
+  h2 { color: #0E7490; margin-top: 2rem; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: .8rem; font-weight: 600; }
+  .na { background: #DCFCE7; color: #166534; }
+  .si { background: #FEE2E2; color: #991B1B; }
+  .parcial { background: #FEF3C7; color: #92400E; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { text-align: left; padding: .6rem; border-bottom: 1px solid #CCFBF1; }
+  th { background: #CCFBF1; font-weight: 600; }
+  code { background: #CCFBF1; padding: 2px 6px; border-radius: 4px; font-size: .9rem; }
+  .ok { color: #16A34A; }
+  .risk { color: #DC2626; }
+  .warn { color: #D97706; }
+  .mitigation { background: #F0FDFA; border-left: 3px solid var(--primary); padding: .8rem 1rem; margin: 1rem 0; border-radius: 0 8px 8px 0; }
+  pre { background: #1E293B; color: #E2E8F0; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<h1>MedScan Pro — Análisis de Seguridad</h1>
+<p><em>Basado en el documento HACKING_OFENSIVO_COMPLETO_SEC.md — 25 vectores analizados</em></p>
+
+<h2>Arquitectura</h2>
+<table>
+  <tr><th>Componente</th><th>Tecnología</th><th>Exposición</th></tr>
+  <tr><td>Backend</td><td>FastAPI (Python)</td><td>127.0.0.1:8000 exclusivamente</td></tr>
+  <tr><td>Frontend</td><td>React + Vite + Tailwind</td><td>Servido por el backend (static)</td></tr>
+  <tr><td>Base de datos</td><td>SQLite (opcional)</td><td>Archivo local, sin red</td></tr>
+  <tr><td>OCR</td><td>Tesseract local</td><td>Sin conexión externa</td></tr>
+</table>
+
+<h2>Vectores Analizados</h2>
+<table>
+  <tr><th>#</th><th>Vector</th><th>Aplicable</th><th>Riesgo</th><th>Mitigación</th></tr>
+
+  <tr>
+    <td>1</td><td>SQL Injection</td>
+    <td><span class="badge parcial">Parcial</span></td>
+    <td><span class="warn">Bajo</span></td>
+    <td>No hay DB implementada aún. Cuando se agregue SQLite, usar siempre <code>parameterized queries</code> (nunca f-strings).</td>
+  </tr>
+  <tr>
+    <td>2</td><td>NoSQL Injection</td>
+    <td><span class="badge na">N/A</span></td>
+    <td><span class="ok">Nulo</span></td>
+    <td>No se usa MongoDB ni ninguna DB NoSQL.</td>
+  </tr>
+  <tr>
+    <td>3</td><td>Command Injection</td>
+    <td><span class="badge si">Sí</span></td>
+    <td><span class="risk">Medio</span></td>
+    <td>El endpoint <code>/api/rename</code> usa <code>os.rename()</code>. Se sanitizan nombres de archivo: se eliminan caracteres <code>;&|$`()</code> antes de renombrar.</td>
+  </tr>
+  <tr>
+    <td>4</td><td>XSS (Cross-Site Scripting)</td>
+    <td><span class="badge si">Sí</span></td>
+    <td><span class="risk">Medio</span></td>
+    <td>Los datos del OCR (nombre paciente) se renderizan en React. React escapa por defecto, pero se agrega <code>sanitize-html</code> y CSP header como defensa extra.</td>
+  </tr>
+  <tr>
+    <td>5</td><td>CSRF</td>
+    <td><span class="badge na">N/A</span></td>
+    <td><span class="ok">Nulo</span></td>
+    <td>No hay sesiones de usuario ni cookies de autenticación. Todo es localhost.</td>
+  </tr>
+  <tr>
+    <td>6</td><td>SSRF</td>
+    <td><span class="badge na">N/A</span></td>
+    <td><span class="ok">Nulo</span></td>
+    <td>El backend no hace requests HTTP salientes. El OCR es completamente local.</td>
+  </tr>
+  <tr>
+    <td>7</td><td>Path Traversal</td>
+    <td><span class="badge si">Sí</span></td>
+    <td><span class="risk">Medio</span></td>
+    <td>Validar que <code>ruta</code> esté dentro del directorio de uploads. Usar <code>Path.resolve()</code> con prefijo fijo.</td>
+  </tr>
+  <tr>
+    <td>8</td><td>DoS / Rate Limiting</td>
+    <td><span class="badge si">Sí</span></td>
+    <td><span class="warn">Bajo</span></td>
+    <td>Agregar rate limiting con <code>slowapi</code> en endpoints clave. Límite: 30 requests/minuto por IP.</td>
+  </tr>
+  <tr>
+    <td>9</td><td>XXE (XML External Entity)</td>
+    <td><span class="badge na">N/A</span></td>
+    <td><span class="ok">Nulo</span></td>
+    <td>No se procesa XML. Los PDFs se leen con PyMuPDF que no expande entidades externas.</td>
+  </tr>
+  <tr>
+    <td>10</td><td>Insecure Deserialization</td>
+    <td><span class="badge na">N/A</span></td>
+    <td><span class="ok">Nulo</span></td>
+    <td>Solo se usa <code>json.loads()</code> estándar. No hay pickle, YAML ni otros serializadores inseguros.</td>
+  </tr>
+  <tr>
+    <td>11</td><td>Prototype Pollution</td>
+    <td><span class="badge parcial">Parcial</span></td>
+    <td><span class="warn">Bajo</span></td>
+    <td>React no es vulnerable directamente. Se evita <code>Object.assign()</code> con datos del usuario en el frontend.</td>
+  </tr>
+  <tr>
+    <td>12</td><td>Brute Force</td>
+    <td><span class="badge na">N/A</span></td>
+    <td><span class="ok">Nulo</span></td>
+    <td>No hay autenticación. Es una app local de escritorio.</td>
+  </tr>
+  <tr>
+    <td>13-25</td><td>Network, Wireless, Mobile, CMS, Cloud, etc.</td>
+    <td><span class="badge na">N/A</span></td>
+    <td><span class="ok">Nulo</span></td>
+    <td>No aplican por arquitectura: app local sin red, sin WiFi, sin cloud, sin CMS.</td>
+  </tr>
+</table>
+
+<h2>Medidas Implementadas</h2>
+
+<div class="mitigation">
+<strong>1. Rate Limiting (slowapi)</strong><br>
+Límite de 30 requests/minuto por IP en endpoints de proceso y exportación. Previene abuso del OCR y DoS locales.
+</div>
+
+<div class="mitigation">
+<strong>2. Sanitización de Paths</strong><br>
+Todos los paths de archivos se resuelven con <code>Path.resolve()</code> y se verifica que estén dentro del directorio de uploads. Se rechazan paths con <code>..</code> o enlaces simbólicos.
+</div>
+
+<div class="mitigation">
+<strong>3. Sanitización de Nombres</strong><br>
+Los nombres de archivo generados por <code>/api/rename</code> se limpian de caracteres peligrosos: <code>;&|$`(){}[]!#</code>. Se usa <code>re.sub</code> para eliminar cualquier carácter no alfanumérico excepto espacios, guiones y puntos.
+</div>
+
+<div class="mitigation">
+<strong>4. Seguridad en Headers HTTP</strong><br>
+Se agregan headers de seguridad: <code>Content-Security-Policy</code>, <code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: DENY</code>, <code>Strict-Transport-Security</code>.
+</div>
+
+<div class="mitigation">
+<strong>5. Validación de Archivos</strong><br>
+Solo se aceptan archivos con extensión <code>.pdf</code>. Se verifica el magic number del PDF (<code>%PDF</code>) antes de procesar.
+</div>
+
+<div class="mitigation">
+<strong>6. Sin Dependencias Innecesarias</strong><br>
+No se usan librerías que introduzcan vectores de ataque (no hay XML, no hay pickle, no hay YAML, no hay exec/eval).</div>
+
+<h2>Lo que NO es Aplicable (por arquitectura)</h2>
+<ul>
+  <li><strong>Network Hacking</strong> — La app solo escucha en 127.0.0.1, no accesible desde la red.</li>
+  <li><strong>Wireless Hacking</strong> — No hay componente WiFi.</li>
+  <li><strong>Cloud Attacks</strong> — Sin conexión a cloud, sin metadata endpoints.</li>
+  <li><strong>Mobile Hacking</strong> — No es una app mobile.</li>
+  <li><strong>Hardware/Firmware</strong> — Software puro, sin firmware.</li>
+  <li><strong>Reverse Engineering</strong> — El .exe es de PyInstaller, el código es Python. Quien tenga acceso físico a la PC puede leerlo, pero eso es inherente al modelo de distribución.</li>
+  <li><strong>CMS Exploitation</strong> — No hay CMS.</li>
+  <li><strong>Supply Chain</strong> — No hay dependencias externas en runtime.</li>
+  <li><strong>Ingeniería Social</strong> — No hay interacción con usuarios remotos.</li>
+  <li><strong>C2 / Persistence</strong> — No hay comunicación externa.</li>
+</ul>
+
+<h2>Recomendaciones Adicionales</h2>
+<ol>
+  <li><strong>Firmar el .exe</strong> con certificado digital para evitar advertencias de Windows Defender.</li>
+  <li><strong>No almacenar datos sensibles</strong> en texto plano si se agrega persistencia en el futuro.</li>
+  <li><strong>Ejecutar con permisos mínimos</strong> — no requiere admin para operar.</li>
+  <li><strong>Revisar dependencias</strong> periódicamente con <code>pip audit</code> o <code>safety</code>.</li>
+</ol>
+
+<hr>
+<p style="color: #0D9488; font-size: .9rem;">Documento generado para MedScan Pro — Junio 2026</p>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# MedScan CST - Node modules
+node_modules/
+frontend/node_modules/
+
+# Python virtual env
+medscan-venv/
+venv/
+.env
+
+# Build artifacts
+frontend/dist/
+backend/static/
+dist/
+build/
+*.spec
+__pycache__/
+*.pyc
+
+# Patient data
+uploads/
+*.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
